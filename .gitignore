@@ -1,0 +1,10 @@
+# local preview / tooling
+.claude/
+# macOS
+.DS_Store
+
+# original source photos (already converted to assets/dump-*.jpg and embedded in index.html)
+assets/**/*.HEIC
+assets/photo album/
+Screenshot*.png
+assets/Screenshot*.png
