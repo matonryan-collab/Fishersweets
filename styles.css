@@ -212,9 +212,12 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 
 /* buttons */
 .btn{font-family:"VT323",monospace;font-size:clamp(15px,4.4vw,19px);letter-spacing:.06em;
-  padding:11px 16px;border-radius:8px;border:1px solid rgba(125,240,192,.4);
+  display:flex;align-items:center;justify-content:center;gap:.4em;line-height:1;
+  padding:13px 18px;border-radius:8px;border:1px solid rgba(125,240,192,.4);
   color:var(--phos);background:rgba(125,240,192,.05);
-  text-shadow:0 0 6px rgba(125,240,192,.4);transition:.2s;flex:1;text-align:center;min-width:120px}
+  text-shadow:0 0 6px rgba(125,240,192,.4);transition:.2s;text-align:center;min-width:120px}
+/* only the side-by-side Spotify/Apple row stretches; standalone buttons hug their content */
+.cta-row .btn{flex:1}
 .btn:hover{background:rgba(125,240,192,.14);transform:translateY(-1px)}
 .btn:active{transform:translateY(0)}
 .btn-gold{color:#1a1400;background:linear-gradient(180deg,#ffd866,var(--gold));border-color:var(--gold);
