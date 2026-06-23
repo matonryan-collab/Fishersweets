@@ -222,34 +222,55 @@
   }
   function togglePower() { powered ? powerDown() : powerUp(); }
 
-  /* ---------------- DIAL (drag) ---------------- */
+  /* ---------------- DIAL (drag + tap) ---------------- */
+  // One gesture model for mouse AND touch. We can't rely on the synthetic
+  // `click` event for tap-to-advance, because touchstart calls preventDefault()
+  // (needed to stop the page scrolling) which suppresses click on mobile.
   let dragging = false, dragLast = 0, dragAccum = 0;
+  let gStartT = 0, gStartX = 0, gStartY = 0, gMoved = 0, gStepped = false;
+
+  function pointFromEvent(e) {
+    if (e.touches && e.touches[0]) return e.touches[0];
+    if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0];
+    return e;
+  }
   function angleFromEvent(e) {
     const r = knob.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const p = e.touches ? e.touches[0] : e;
+    const p = pointFromEvent(e);
     return Math.atan2(p.clientY - cy, p.clientX - cx) * 180 / Math.PI;
   }
   function dragStart(e) {
-    if (!powered) { powerUp(); return; }
-    dragging = true; dragAccum = 0;
+    if (!powered) { powerUp(); e.preventDefault(); return; }
+    dragging = true; dragAccum = 0; gStepped = false; gMoved = 0;
+    gStartT = performance.now();
+    const p = pointFromEvent(e); gStartX = p.clientX; gStartY = p.clientY;
     dragLast = angleFromEvent(e);
     knob.style.cursor = 'grabbing';
     e.preventDefault();
   }
   function dragMove(e) {
     if (!dragging) return;
+    const p = pointFromEvent(e);
+    gMoved = Math.max(gMoved, Math.hypot(p.clientX - gStartX, p.clientY - gStartY));
     const a = angleFromEvent(e);
     let delta = a - dragLast;
     if (delta > 180) delta -= 360; else if (delta < -180) delta += 360;
     dragLast = a;
     dragAccum += delta;
     // each ~detent of rotation steps a channel
-    while (dragAccum >= DEG_PER) { dragAccum -= DEG_PER; goTo(current + 1); }
-    while (dragAccum <= -DEG_PER) { dragAccum += DEG_PER; goTo(current - 1); }
+    while (dragAccum >= DEG_PER) { dragAccum -= DEG_PER; goTo(current + 1); gStepped = true; }
+    while (dragAccum <= -DEG_PER) { dragAccum += DEG_PER; goTo(current - 1); gStepped = true; }
     e.preventDefault();
   }
-  function dragEnd() { dragging = false; knob.style.cursor = 'grab'; }
+  function dragEnd() {
+    if (!dragging) return;
+    dragging = false; knob.style.cursor = 'grab';
+    // a quick press with no real movement and no detent crossed = a "tap" -> next channel
+    if (powered && !gStepped && gMoved < 12 && performance.now() - gStartT < 400) {
+      goTo(current + 1);
+    }
+  }
 
   knob.addEventListener('mousedown', dragStart);
   window.addEventListener('mousemove', dragMove);
@@ -257,15 +278,7 @@
   knob.addEventListener('touchstart', dragStart, { passive: false });
   window.addEventListener('touchmove', dragMove, { passive: false });
   window.addEventListener('touchend', dragEnd);
-
-  // tap knob = next channel
-  let downT = 0, moved = false;
-  knob.addEventListener('pointerdown', () => { downT = performance.now(); moved = false; });
-  knob.addEventListener('pointermove', () => { if (dragging) moved = true; });
-  knob.addEventListener('click', () => {
-    if (!powered) { powerUp(); return; }
-    if (!moved && performance.now() - downT < 250) goTo(current + 1);
-  });
+  window.addEventListener('touchcancel', dragEnd);
 
   // keyboard on knob
   knob.addEventListener('keydown', (e) => {
